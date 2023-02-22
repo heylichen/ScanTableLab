@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.heylichen.scantable.dao.mapper.ShopItemsMapper">
+
+    <resultMap id="BaseResultMap" type="com.heylichen.scantable.dao.domain.ShopItem">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="itemName" column="item_name" jdbcType="VARCHAR"/>
+            <result property="shopId" column="shop_id" jdbcType="BIGINT"/>
+            <result property="isDel" column="is_del" jdbcType="TINYINT"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,item_name,shop_id,
+        is_del,create_time,update_time
+    </sql>
+    <!-- update_time index-->
+    <select id="iterateByUpdateTimeRange" resultMap="BaseResultMap">
+        SELECT id,
+               update_time
+        FROM shop_item
+        where update_time > #{updateTimeRange.min}
+          AND update_time <![CDATA[ <= ]]> #{updateTimeRange.max}
+        order by update_time asc, id asc
+            LIMIT #{limit}
+    </select>
+
+    <select id="iterateAtUpdateTime" resultMap="BaseResultMap">
+        SELECT id,
+               update_time
+        FROM shop_item
+        where update_time = #{updateTime}
+        <if test="previousId!=null">
+            AND id > #{previousId}
+        </if>
+        order by update_time asc, id asc
+            LIMIT #{limit}
+    </select>
+
+    <!-- shop_id, is_del index, implicitly contains id-->
+    <select id="iterateByShopIdRange" resultMap="BaseResultMap">
+        SELECT id,
+        shop_id,is_del
+        FROM shop_item
+        where shop_id in
+        <foreach collection="shopIds" item="shopId" open="(" close=")" separator=",">
+            #{shopId}
+        </foreach>
+        <if test="previousShopId!=null">
+            AND shop_id>#{previousShopId}
+        </if>
+        order by shop_id asc, is_del asc, id asc
+        LIMIT #{limit}
+    </select>
+
+    <select id="iterateEqShopId" resultMap="BaseResultMap">
+        SELECT id,
+        shop_id,is_del
+        FROM shop_item
+        where shop_id = #{shopId}
+        <if test="previousIsDel!=null">
+            AND is_del>#{previousIsDel}
+        </if>
+        order by shop_id asc, is_del asc, id asc
+        LIMIT #{limit}
+    </select>
+
+    <select id="iterateEqShopIdDel" resultMap="BaseResultMap">
+        SELECT id,
+        shop_id,is_del
+        FROM shop_item
+        where shop_id = #{shopId}
+        AND is_del =  #{isDel}
+        <if test="previousId!=null">
+            AND id>#{previousId}
+        </if>
+        order by shop_id asc, is_del asc, id asc
+        LIMIT #{limit}
+    </select>
+</mapper>
