@@ -2,8 +2,38 @@ package com.heylichen.scantable.iterate;
 
 import java.util.*;
 
+/**
+ * As an example for all comments in this class. The test table named test_table. <br>
+ * It has a composite index named idx_f1_f2 on (f1, f2), and primary key is id column.<br>
+ *
+ * Given a range of f1, this is a helper tool to scan all rows in that range using index idx_f1_f2 and<br>
+ * wrap the scan logic as an Iterator<List<T>>.<br>
+ * @param <P>
+ * @param <T>
+ */
 /* default */ class MultiRangeScanIterator<P extends WithLimit, T> implements Iterator<List<T>> {
+  /**
+   * always peek the first Iterator which hasNext from top and issue a query.
+   */
   private final Deque<Iterator<List<T>>> stack;
+  /**
+   *
+   * level 0 correspond to the Iterator of SQL: <br/>
+   *         select f1,f2,id from test_table where f1 > #{previousF1} order by f1, f2, id limit N;<br/>
+   * the RangeScanOptions of level 0 is stored at index o in multiRangeScanOptions.<br/>
+   *
+   * level 1 correspond to the Iterator of SQL:<br/>
+   *         select f1,f2,id from test_table where f1 =#{previousF1} AND f2 > #{previousF2}<br/>
+   *                order by f1, f2, id limit N;<br/>
+   * the RangeScanOptions of level 1 is stored at index 1 in multiRangeScanOptions.<br/>
+   *
+   * level 2 correspond to the Iterator of SQL:<br/>
+   *         select f1,f2,id from test_table where f1 =#{previousF1} AND f2 = #{previousF2}<br/>
+   *                AND id>#{previousId} order by f1, f2, id limit N;<br/>
+   * the RangeScanOptions of level 2 is stored at index 2 in multiRangeScanOptions.<br/>
+   *
+   * ...
+   */
   private final List<RangeScanOptions<P, T>> multiRangeScanOptions;
   private boolean hasNext;
 
@@ -44,7 +74,6 @@ import java.util.*;
     // issue a database query
     List<T> rows = iterator.next();
     if (iterator.hasNext()) {
-      //push all sub index iterators
       T previous = rows.get(rows.size() - 1);
       pushAllSubIterators(previous, nonEmptyTop.optionsPosition + 1);
     } else {
@@ -58,6 +87,32 @@ import java.util.*;
     return rows;
   }
 
+  /**
+   * for example. if the table has a composite index on (f1, f2), and primary key is id column.<br/>
+   * QueryLevel1: select f1,f2,id from test_table where f1 in (???) order by f1, f2, id limit N;<br>
+   * returned N rows. set the last row as previousRow. Say current query level is QueryLevel1.<br/>
+   *
+   * if resultSet.count < N, there are no more rows to query. We can pop the Iterator from stack.<br/>
+   *
+   * Because it returned N rows, we know there can be more rows match previousRow.f1 and previousRow.f2,<br/>
+   * with different ids. We need to exhaust all rows match previousRow.f1 and previousRow.f2, use QueryLevel3.<br/>
+   *
+   * QueryLevel3 select f1,f2,id from test_table where f1 =#{previousF1} AND f2 = #{previousF2}<br/>
+   *        AND id>#{previousId} order by f1, f2, id limit N;<br/>
+   *
+   * When all rows match previousRow.f1 and previousRow.f2 exhausted. There may be rows with previousRow.f1
+   * but different f2. We need to exhaust all rows match previousRow.f1 with different f2, use QueryLevel2:<br/>
+   *
+   * QueryLevel2 select f1,f2,id from test_table where f1 =#{previousF1} AND f2 > #{previousF2}<br/>
+   *        order by f1, f2, id limit N; <br/>
+   *
+   * So we push all QueryLevels above current level(eg. QueryLevel1), in the order QueryLevel2, QueryLevel3.
+   * Because we peek Iterator from stack top and issue query. <br/>
+   * This is a recursive process, so we push all sub-level Iterators onto the stack each time the current
+   * query returned N rows.
+   * @param previous
+   * @param nextLevelOffset
+   */
   private void pushAllSubIterators(T previous, int nextLevelOffset) {
     int currentOffset = nextLevelOffset;
     while (currentOffset < multiRangeScanOptions.size()) {
