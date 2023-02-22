@@ -8,6 +8,9 @@ import java.util.*;
  *
  * Given a range of f1, this is a helper tool to scan all rows in that range using index idx_f1_f2 and<br>
  * wrap the scan logic as an Iterator<List<T>>.<br>
+ *
+ * Actually, you can use it to scan a composite index of variable columns. See TwoLevelMultiRangeScan
+ * and ThreeLevelMultiRangeScan as usage examples.
  * @param <P>
  * @param <T>
  */
