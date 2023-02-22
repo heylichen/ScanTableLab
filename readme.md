@@ -1,8 +1,9 @@
-# Read Me First
+# Scan table by index range
+## a learning lab and tool
 by heylichen@qq.com
 
 
-# Getting Started
+# Test Table
 test table shop_items. It contains 780108 rows.
 
 DDL: src/test/resources/shop_items_DDL.sql
