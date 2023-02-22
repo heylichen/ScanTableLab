@@ -23,7 +23,10 @@ public class BaseTest {
     ShopIdScanParam p = new ShopIdScanParam();
     p.setShopId(BigInteger.ONE);
     p.setLimit(1);
+    log.info("------------------------ TEST SETUP BEGIN");
+    log.info("before all test, force getting connection before test");
     //force getting connection before test
     shopItemsMapper.iterateEqShopId(p);
+    log.info("------------------------ TEST SETUP END");
   }
 }

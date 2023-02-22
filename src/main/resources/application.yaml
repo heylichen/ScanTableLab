@@ -14,3 +14,9 @@ mybatis:
   # Loads all files in the 'mapper' directory (regardless of directory hierarchy) with names ending in '-mapper.xml'.
   mapper-locations:
     - "classpath:mapper/**/*Mapper.xml"
+logging:
+  level:
+    net:
+      ttddyy:
+        dsproxy:
+          listener: debug
